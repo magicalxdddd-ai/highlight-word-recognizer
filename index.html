@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Highlight Vocabulary - 荧光笔单词识别器</title>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root{
+  --primary:#4f46e5;--primary-light:#818cf8;--primary-dark:#4338ca;
+  --accent:#fbbf24;--accent-warm:#f59e0b;--accent-soft:#fef3c7;
+  --bg:#f8fafc;--surface:#ffffff;--surface-2:#f1f5f9;
+  --ink:#0f172a;--muted:#64748b;--rule:#e2e8f0;
+  --success:#10b981;--warning:#f59e0b;--danger:#ef4444;--info:#0ea5e9;
+  --shadow-sm:0 1px 2px 0 rgba(0,0,0,.05);
+  --shadow:0 4px 6px -1px rgba(0,0,0,.08),0 2px 4px -2px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.06);
+  --shadow-xl:0 20px 25px -5px rgba(0,0,0,.08),0 8px 10px -6px rgba(0,0,0,.06);
+  --radius:16px;--radius-lg:24px;--radius-sm:10px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;min-height:100vh}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--primary);text-decoration:none}
+img{max-width:100%;height:auto;display:block}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--rule);transition:box-shadow .3s}
+nav.scrolled{box-shadow:var(--shadow)}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--ink)}
+.nav-brand .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-light));display:grid;place-items:center;color:#fff;font-size:18px;box-shadow:0 4px 12px rgba(79,70,229,.25)}
+.nav-links{display:flex;gap:6px}
+.nav-links a{padding:8px 16px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;color:var(--muted);transition:.2s}
+.nav-links a:hover{color:var(--primary);background:var(--surface-2)}
+.nav-links a.active{color:var(--primary);background:var(--accent-soft)}
+.nav-mobile-btn{display:none;padding:8px;border-radius:8px}
+
+/* Sections */
+section{padding:80px 24px}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-header{text-align:center;margin-bottom:48px}
+.section-header h2{font-size:32px;font-weight:700;margin-bottom:8px;letter-spacing:-.02em}
+.section-header p{color:var(--muted);font-size:16px;max-width:500px;margin:0 auto}
+
+/* Hero */
+#hero{padding:140px 24px 100px;background:linear-gradient(180deg,var(--bg) 0%,#eef2ff 100%);position:relative;overflow:hidden}
+#hero::before{content:'';position:absolute;top:-80px;right:-80px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(79,70,229,.08),transparent 70%);pointer-events:none}
+#hero::after{content:'';position:absolute;bottom:-40px;left:-40px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(251,191,36,.1),transparent 70%);pointer-events:none}
+.hero-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;position:relative;z-index:1}
+.hero-left h1{font-size:48px;font-weight:800;line-height:1.15;letter-spacing:-.03em;margin-bottom:20px;background:linear-gradient(135deg,var(--ink) 0%,var(--primary) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-left p{font-size:18px;color:var(--muted);margin-bottom:32px;line-height:1.7}
+.hero-btns{display:flex;gap:14px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;border-radius:var(--radius-sm);font-size:15px;font-weight:600;transition:.2s;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 14px rgba(79,70,229,.35)}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,.4)}
+.btn-secondary{background:var(--surface);color:var(--ink);border:1.5px solid var(--rule);box-shadow:var(--shadow-sm)}
+.btn-secondary:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:10px 18px;font-size:13px}
+.btn-icon{width:36px;height:36px;padding:0;border-radius:8px;display:inline-grid;place-items:center}
+
+.hero-right{position:relative}
+.hero-mockup{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-xl);padding:20px;border:1px solid var(--rule);position:relative}
+.mockup-header{display:flex;gap:6px;margin-bottom:16px}
+.mockup-dot{width:10px;height:10px;border-radius:50%}
+.mockup-dot.red{background:#ef4444}.mockup-dot.yel{background:#f59e0b}.mockup-dot.grn{background:#10b981}
+.mockup-body{height:260px;border-radius:var(--radius);background:var(--bg);position:relative;overflow:hidden;padding:20px;font-size:14px;line-height:2;color:var(--muted)}
+.mockup-line{height:12px;border-radius:6px;background:var(--surface-2);margin-bottom:10px;position:relative}
+.mockup-line.hl-yellow{background:rgba(251,191,36,.45);width:85%}
+.mockup-line.hl-green{background:rgba(34,197,94,.4);width:60%}
+.mockup-line.hl-blue{background:rgba(59,130,246,.4);width:75%}
+.mockup-line.hl-pink{background:rgba(236,72,153,.4);width:50%}
+.mockup-line.hl-yellow::after,.mockup-line.hl-green::after,.mockup-line.hl-blue::after,.mockup-line.hl-pink::after{content:attr(data-word);position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:600;color:rgba(0,0,0,.55);white-space:nowrap}
+.mockup-float{position:absolute;width:180px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:14px;border:1px solid var(--rule);animation:float 4s ease-in-out infinite}
+.mockup-float.item1{top:-20px;right:-20px;animation-delay:0s}
+.mockup-float.item2{bottom:20px;left:-30px;animation-delay:1.5s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.mockup-float .w{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.mockup-float .m{font-size:13px;color:var(--muted)}
+
+/* Upload Section */
+.upload-zone{border:2px dashed var(--rule);border-radius:var(--radius-lg);padding:48px 24px;text-align:center;background:var(--surface);transition:.3s;position:relative;overflow:hidden}
+.upload-zone.dragover{border-color:var(--primary);background:#eef2ff}
+.upload-zone .icon{width:64px;height:64px;border-radius:var(--radius);background:var(--accent-soft);display:grid;place-items:center;margin:0 auto 16px;font-size:28px}
+.upload-zone h3{font-size:18px;margin-bottom:6px}
+.upload-zone p{font-size:14px;color:var(--muted);margin-bottom:20px}
+.upload-zone input[type=file]{display:none}
+#previewArea{margin-top:24px;display:none}
+#previewArea.show{display:block}
+#previewArea img{max-height:320px;border-radius:var(--radius);margin:0 auto;box-shadow:var(--shadow)}
+.pdf-thumbs{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+.pdf-thumb{padding:8px;border-radius:var(--radius-sm);border:2px solid transparent;background:var(--surface);cursor:pointer;transition:.2s}
+.pdf-thumb.active{border-color:var(--primary)}
+.pdf-thumb canvas{border-radius:6px;display:block;margin-bottom:4px}
+.pdf-thumb span{font-size:11px;color:var(--muted)}
+
+/* Mode Toggle */
+.mode-toggle{display:inline-flex;background:var(--surface-2);border-radius:var(--radius-sm);padding:4px;margin-bottom:20px}
+.mode-toggle button{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);transition:.2s}
+.mode-toggle button.active{background:var(--surface);color:var(--primary);box-shadow:var(--shadow-sm)}
+
+/* Progress */
+.progress-wrap{display:none;margin:20px 0}
+.progress-wrap.show{display:block}
+.progress-bar{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-light));border-radius:4px;transition:width .4s;width:0%}
+.progress-text{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
+
+/* Status */
+.status-box{padding:12px 16px;border-radius:var(--radius-sm);background:var(--surface-2);color:var(--muted);font-size:13px;margin-top:16px;display:none}
+.status-box.show{display:block}
+.status-box.error{background:#fef2f2;color:var(--danger)}
+.status-box.success{background:#ecfdf5;color:var(--success)}
+
+/* Cards */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.word-card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid var(--rule);box-shadow:var(--shadow-sm);transition:.2s;position:relative}
+.word-card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+.word-card .word{font-size:20px;font-weight:700;color:var(--ink);margin-bottom:6px;word-break:break-word}
+.word-card .meaning{font-size:14px;color:var(--muted);line-height:1.5;word-break:break-word}
+.word-card .word-tags{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.tag-primary{background:#eef2ff;color:var(--primary)}
+.tag-success{background:#ecfdf5;color:var(--success)}
+.tag-warning{background:#fffbeb;color:var(--warning)}
+.tag-info{background:#eff6ff;color:var(--info)}
+.tag-muted{background:var(--surface-2);color:var(--muted)}
+.card-actions{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
+.card-actions .btn-sm{flex:1;justify-content:center}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:28px 24px;text-align:center;border:1px solid var(--rule);box-shadow:var(--shadow-sm);transition:.2s}
+.stat-card:hover{box-shadow:var(--shadow)}
+.stat-card .num{font-size:36px;font-weight:800;color:var(--primary);line-height:1}
+.stat-card .label{font-size:14px;color:var(--muted);margin-top:8px}
+.stat-card .change{font-size:12px;color:var(--success);margin-top:4px;font-weight:500}
+
+/* Features */
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.feature-card{background:var(--surface);border-radius:var(--radius);padding:28px;border:1px solid var(--rule);box-shadow:var(--shadow-sm);transition:.2s}
+.feature-card:hover{box-shadow:var(--shadow);border-color:var(--primary-light);transform:translateY(-2px)}
+.feature-icon{width:48px;height:48px;border-radius:var(--radius-sm);display:grid;place-items:center;font-size:22px;margin-bottom:16px}
+.feature-card h4{font-size:16px;font-weight:700;margin-bottom:8px}
+.feature-card p{font-size:14px;color:var(--muted);line-height:1.6}
+
+/* Wordbook */
+.wordbook-toolbar{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center}
+.wordbook-toolbar input,.wordbook-toolbar select{flex:1;min-width:200px;padding:10px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--rule);background:var(--surface);font-size:14px;outline:none;transition:.2s}
+.wordbook-toolbar input:focus,.wordbook-toolbar select:focus{border-color:var(--primary)}
+.wordbook-filters{display:flex;gap:8px;flex-wrap:wrap}
+.filter-btn{padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--muted);background:var(--surface-2);transition:.2s;border:1.5px solid transparent}
+.filter-btn:hover{background:var(--surface);border-color:var(--rule)}
+.filter-btn.active{background:var(--primary);color:#fff}
+
+/* Review Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);z-index:200;display:none;place-items:center;padding:24px}
+.modal-overlay.show{display:grid}
+.modal-content{background:var(--surface);border-radius:var(--radius-lg);max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-xl);border:1px solid var(--rule)}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{font-size:18px;font-weight:700}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--rule);display:flex;gap:10px;justify-content:flex-end}
+.close-btn{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--muted);transition:.2s}
+.close-btn:hover{background:var(--surface-2);color:var(--ink)}
+
+/* Review Card */
+.review-card{background:linear-gradient(135deg,var(--primary),var(--primary-dark));border-radius:var(--radius);padding:40px 32px;text-align:center;color:#fff;position:relative;overflow:hidden;margin-bottom:24px;min-height:220px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.review-card::before{content:'';position:absolute;top:-50%;right:-50%;width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none}
+.review-word{font-size:32px;font-weight:800;margin-bottom:16px;cursor:pointer;transition:.2s}
+.review-word:hover{transform:scale(1.05)}
+.review-meaning{font-size:18px;opacity:.9;display:none}
+.review-meaning.show{display:block}
+.review-hint{font-size:13px;opacity:.6;margin-top:8px}
+.review-progress{background:var(--surface-2);border-radius:var(--radius-sm);padding:16px;margin-bottom:20px}
+.review-progress .bar{height:6px;background:var(--rule);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.review-progress .fill{height:100%;background:var(--primary);border-radius:3px;transition:width .4s}
+.review-progress .info{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.review-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.review-actions .btn{justify-content:center}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#059669}
+
+/* Settings Modal */
+.settings-group{margin-bottom:20px}
+.settings-group label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.settings-group input,.settings-group select{width:100%;padding:10px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--rule);background:var(--surface);font-size:14px;outline:none;transition:.2s}
+.settings-group input:focus,.settings-group select:focus{border-color:var(--primary)}
+.settings-group small{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
+
+/* Toast */
+#toastContainer{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.toast{background:var(--ink);color:#fff;padding:12px 20px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);animation:toastIn .3s ease;pointer-events:auto;max-width:320px}
+.toast.error{background:var(--danger)}.toast.success{background:var(--success)}
+@keyframes toastIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Footer */
+footer{padding:48px 24px;background:var(--ink);color:#94a3b8;text-align:center;font-size:13px}
+footer a{color:#cbd5e1}footer a:hover{color:#fff}
+
+/* Empty State */
+.empty-state{text-align:center;padding:48px 24px}
+.empty-state .icon{font-size:48px;margin-bottom:16px;opacity:.5}
+.empty-state h4{font-size:18px;margin-bottom:6px;color:var(--muted)}
+.empty-state p{font-size:14px;color:var(--muted)}
+
+/* Responsive */
+@media(max-width:900px){
+  .hero-inner{grid-template-columns:1fr;gap:40px;text-align:center}
+  .hero-left h1{font-size:36px}
+  .hero-right{order:-1}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .features-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:640px){
+  .nav-links{display:none}
+  .nav-mobile-btn{display:block}
+  .hero-left h1{font-size:28px}
+  section{padding:60px 20px}
+  .stats-grid{grid-template-columns:1fr}
+  .features-grid{grid-template-columns:1fr}
+  .cards-grid{grid-template-columns:1fr}
+  .review-actions{grid-template-columns:1fr}
+  .wordbook-toolbar{flex-direction:column;align-items:stretch}
+}
+
+/* Scroll animations */
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="#hero" class="nav-brand">
+      <div class="logo">H</div>
+      Highlight Vocabulary
+    </a>
+    <div class="nav-links">
+      <a href="#hero" class="active">首页</a>
+      <a href="#recognize">识别</a>
+      <a href="#wordbook">单词本</a>
+      <a href="#" onclick="openSettings();return false">设置</a>
+    </div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <h1>截图识别荧光笔单词<br>智能生成单词本</h1>
+      <p>上传带有荧光笔标注的英文截图或 PDF，自动提取高亮单词，一键生成释义，纳入间隔重复复习计划。</p>
+      <div class="hero-btns">
+        <a href="#recognize" class="btn btn-primary">开始识别</a>
+        <a href="#wordbook" class="btn btn-secondary">查看单词本</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-mockup">
+        <div class="mockup-header"><span class="mockup-dot red"></span><span class="mockup-dot yel"></span><span class="mockup-dot grn"></span></div>
+        <div class="mockup-body">
+          <div class="mockup-line" style="width:100%"></div>
+          <div class="mockup-line hl-yellow" data-word="highlight"></div>
+          <div class="mockup-line" style="width:80%"></div>
+          <div class="mockup-line hl-green" data-word="vocabulary"></div>
+          <div class="mockup-line" style="width:90%"></div>
+          <div class="mockup-line hl-blue" data-word="recognition"></div>
+          <div class="mockup-line" style="width:70%"></div>
+          <div class="mockup-line hl-pink" data-word="memorize"></div>
+          <div class="mockup-line" style="width:85%"></div>
+        </div>
+        <div class="mockup-float item1">
+          <div class="w">highlight</div>
+          <div class="m">v. 突出显示；强调</div>
+        </div>
+        <div class="mockup-float item2">
+          <div class="w">vocabulary</div>
+          <div class="m">n. 词汇；词汇量</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Recognize -->
+<section id="recognize">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>上传并识别</h2>
+      <p>支持图片拖拽上传、Ctrl+V 粘贴截图，以及 PDF 文件上传</p>
+    </div>
+    <div style="text-align:center">
+      <div class="mode-toggle">
+        <button id="modeLocal" class="active" onclick="setMode('local')">本地 OCR 识别</button>
+        <button id="modeAI" onclick="setMode('ai')">AI 精准识别</button>
+      </div>
+    </div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <div class="icon">📤</div>
+      <h3>点击或拖拽上传图片 / PDF</h3>
+      <p>支持 JPG、PNG、GIF、PDF 格式，也可以直接 Ctrl+V 粘贴截图</p>
+      <button class="btn btn-primary btn-sm">选择文件</button>
+      <input type="file" id="fileInput" accept="image/*,.pdf" onchange="handleFile(this.files[0])">
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">准备中...</div>
+    </div>
+    <div class="status-box" id="statusBox"></div>
+    <div id="previewArea">
+      <img id="previewImg" alt="预览">
+      <div class="pdf-thumbs" id="pdfThumbs"></div>
+    </div>
+    <div style="text-align:center;margin-top:24px;display:none" id="recognizeActions">
+      <button class="btn btn-primary" onclick="startRecognition()">开始识别</button>
+      <button class="btn btn-secondary" onclick="clearUpload()">重新上传</button>
+    </div>
+  </div>
+</section>
+
+<!-- Results -->
+<section id="results" style="display:none">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>识别结果</h2>
+      <p id="resultSummary">共识别出 0 个单词</p>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:24px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="addAllToBook()">全部加入单词本</button>
+      <button class="btn btn-secondary btn-sm" onclick="completeMeanings()">补全释义</button>
+      <button class="btn btn-secondary btn-sm" onclick="copyResults()">复制结果</button>
+    </div>
+    <div class="cards-grid" id="resultsGrid"></div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section id="stats">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>学习统计</h2>
+      <p>实时追踪你的词汇积累进度</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="num" id="statTotal">0</div>
+        <div class="label">单词总数</div>
+        <div class="change" id="statWeek">本周 +0</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="statDue">0</div>
+        <div class="label">今日待复习</div>
+        <div class="change">保持节奏</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="statMastered">0%</div>
+        <div class="label">掌握率</div>
+        <div class="change" id="statMasteredDetail">0 / 0</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="statStreak">0</div>
+        <div class="label">连续学习</div>
+        <div class="change">天</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:32px">
+      <button class="btn btn-primary" onclick="openReview()">开始复习</button>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>核心功能</h2>
+      <p>专为英语学习者打造的高效词汇整理工具</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fef3c7">🎯</div>
+        <h4>智能识别</h4>
+        <p>本地 OCR + AI 视觉模型双引擎，精准提取荧光笔标注的英文单词和短语</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#dbeafe">🤖</div>
+        <h4>AI 释义</h4>
+        <p>自动调用大语言模型根据上下文生成中文释义，无需手动查词典</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#d1fae5">🔄</div>
+        <h4>间隔重复</h4>
+        <p>基于 SM-2 算法自动安排复习计划，科学巩固记忆，提升长期留存率</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fce7f3">📄</div>
+        <h4>PDF 支持</h4>
+        <p>直接上传 PDF 文件，选择指定页面进行识别，论文教材一键处理</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#e0e7ff">📤</div>
+        <h4>一键导出</h4>
+        <p>支持 JSON、CSV 格式导出单词本，方便导入 Anki 或其他背词工具</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f3e8ff">🔊</div>
+        <h4>语音朗读</h4>
+        <p>内置浏览器语音合成，点击即可听取标准美式发音，支持语速调节</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Wordbook -->
+<section id="wordbook">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>单词本</h2>
+      <p>管理你的词汇库，随时复习巩固</p>
+    </div>
+    <div class="wordbook-toolbar">
+      <input type="text" id="wbSearch" placeholder="搜索单词或释义..." oninput="renderWordbook()">
+      <select id="wbFilter" onchange="renderWordbook()">
+        <option value="all">全部</option>
+        <option value="new">新词</option>
+        <option value="review">待复习</option>
+        <option value="hard">困难词</option>
+        <option value="mastered">已掌握</option>
+      </select>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary btn-sm" onclick="exportWordbook('json')">导出 JSON</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportWordbook('csv')">导出 CSV</button>
+      </div>
+    </div>
+    <div class="cards-grid" id="wordbookGrid"></div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>Highlight Vocabulary - 荧光笔单词识别器</p>
+  <p style="margin-top:4px;opacity:.7">纯前端实现，数据存储在浏览器本地</p>
+</footer>
+
+<!-- Review Modal -->
+<div class="modal-overlay" id="reviewModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>间隔重复复习</h3>
+      <button class="close-btn" onclick="closeReview()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="review-progress">
+        <div class="bar"><div class="fill" id="reviewFill"></div></div>
+        <div class="info"><span id="reviewProgressText">0 / 0</span><span id="reviewStats">认识 0 | 不认识 0</span></div>
+      </div>
+      <div class="review-card" onclick="toggleReviewMeaning()">
+        <div class="review-word" id="reviewWord">点击开始复习</div>
+        <div class="review-meaning" id="reviewMeaning"></div>
+        <div class="review-hint">点击卡片显示释义</div>
+      </div>
+      <div class="review-actions" id="reviewActions" style="display:none">
+        <button class="btn btn-danger" onclick="reviewAnswer(false)">不认识</button>
+        <button class="btn btn-success" onclick="reviewAnswer(true)">认识</button>
+      </div>
+      <div style="text-align:center;margin-top:16px" id="reviewNextWrap">
+        <button class="btn btn-primary" onclick="nextReviewCard()" id="reviewNextBtn" style="display:none">下一个</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-content" style="max-width:480px">
+    <div class="modal-header">
+      <h3>设置</h3>
+      <button class="close-btn" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-group">
+        <label>AI API Key</label>
+        <input type="password" id="apiKey" placeholder="输入 DeepSeek 或其他 OpenAI 兼容 API Key">
+        <small>用于 AI 精准识别和自动释义，仅存储在本地浏览器</small>
+      </div>
+      <div class="settings-group">
+        <label>API 地址</label>
+        <input type="text" id="apiEndpoint" value="https://api.deepseek.com/chat/completions">
+      </div>
+      <div class="settings-group">
+        <label>模型名称</label>
+        <input type="text" id="apiModel" value="deepseek-chat">
+      </div>
+      <div class="settings-group">
+        <label>发音语速</label>
+        <input type="range" id="voiceRate" min="0.4" max="1.5" step="0.05" value="0.85" oninput="updateVoiceLabel()">
+        <small id="voiceLabel">当前语速: 0.85</small>
+      </div>
+      <div class="settings-group">
+        <label>默认识别模式</label>
+        <select id="defaultMode">
+          <option value="local">本地 OCR</option>
+          <option value="ai">AI 精准识别</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:24px">
+        <button class="btn btn-danger btn-sm" style="flex:1" onclick="clearAllData()">清空所有数据</button>
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="saveSettings()">保存设置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+// ========== State ==========
+let currentImageDataUrl = '';
+let recognizedWords = [];
+let currentMode = 'local';
+let voiceRate = Number(localStorage.getItem('hv_voice_rate') || '0.85');
+let reviewQueue = [];
+let reviewIndex = 0;
+let reviewKnown = 0;
+let reviewUnknown = 0;
+let showingMeaning = false;
+
+// ========== Fallback Meanings ==========
+const fallbackMeanings = {
+  highlight:'v. 突出显示；强调',vocabulary:'n. 词汇；词汇量',recognition:'n. 识别；承认',
+  memorize:'v. 记忆；背诵',extract:'v. 提取；摘录',phrase:'n. 短语；词组',
+  context:'n. 语境；上下文',fluorescent:'adj. 荧光的',marker:'n. 记号笔；标记',
+  annotation:'n. 注释；标注',screenshot:'n. 截图',pdf:'n. 便携式文档格式',
+  upload:'v. 上传',drag:'v. 拖拽',clipboard:'n. 剪贴板',
+  recognize:'v. 识别；认出',accurate:'adj. 准确的',automatic:'adj. 自动的',
+  generate:'v. 生成；产生',translation:'n. 翻译；译文',meaning:'n. 意思；含义',
+  review:'v./n. 复习；回顾',interval:'n. 间隔；间距',repetition:'n. 重复；复述',
+  algorithm:'n. 算法',master:'v. 掌握；精通',difficult:'adj. 困难的',
+  progress:'n. 进度；进展',statistics:'n. 统计；数据',dashboard:'n. 仪表盘',
+  wordbook:'n. 单词本',export:'v. 导出',import:'v. 导入',
+  pronunciation:'n. 发音',speech:'n. 语音；演讲',synthesis:'n. 合成',
+  configure:'v. 配置；设置',preference:'n. 偏好；喜好',session:'n. 会话；一段时间'
+};
+
+// ========== Init ==========
+document.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  updateStats();
+  renderWordbook();
+  initScrollEffects();
+  initNavScroll();
+  initDragDrop();
+  initPaste();
+});
+
+// ========== Navigation ==========
+function initNavScroll() {
+  const nav = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+    updateActiveNav();
+  });
+}
+
+function updateActiveNav() {
+  const sections = ['hero','recognize','results','stats','features','wordbook'];
+  let current = '';
+  for (const id of sections) {
+    const el = document.getElementById(id);
+    if (el && el.offsetTop - 100 <= window.scrollY) current = id;
+  }
+  document.querySelectorAll('.nav-links a').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+
+function initScrollEffects() {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.feature-card, .stat-card, .word-card').forEach(el => {
+    el.classList.add('fade-in');
+    observer.observe(el);
+  });
+}
+
+function toggleMobileNav() {
+  const links = document.querySelector('.nav-links');
+  links.style.display = links.style.display === 'flex' ? 'none' : 'flex';
+  if (links.style.display === 'flex') {
+    links.style.position = 'absolute';
+    links.style.top = '64px';
+    links.style.left = '0';
+    links.style.right = '0';
+    links.style.flexDirection = 'column';
+    links.style.background = 'rgba(255,255,255,.95)';
+    links.style.backdropFilter = 'blur(16px)';
+    links.style.padding = '16px 24px';
+    links.style.borderBottom = '1px solid var(--rule)';
+    links.style.boxShadow = 'var(--shadow-lg)';
+  }
+}
+
+// ========== Upload ==========
+function initDragDrop() {
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    handleFile(e.dataTransfer.files[0]);
+  });
+}
+
+function initPaste() {
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        handleFile(item.getAsFile());
+        break;
+      }
+    }
+  });
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  setStatus('');
+  recognizedWords = [];
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    await renderPdf(file);
+    return;
+  }
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => showPreview(e.target.result);
+    reader.readAsDataURL(file);
+    return;
+  }
+  showToast('暂不支持该文件格式，请上传图片或 PDF', 'error');
+}
+
+async function renderPdf(file) {
+  showProgress(true, '正在渲染 PDF...');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const thumbs = document.getElementById('pdfThumbs');
+  thumbs.innerHTML = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2.2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+    const thumb = document.createElement('div');
+    thumb.className = 'pdf-thumb' + (i === 1 ? ' active' : '');
+    const tc = document.createElement('canvas');
+    const ratio = canvas.width / canvas.height;
+    tc.width = 140; tc.height = Math.round(140 / ratio);
+    tc.getContext('2d').drawImage(canvas, 0, 0, tc.width, tc.height);
+    thumb.appendChild(tc);
+    thumb.insertAdjacentHTML('beforeend', `<span>第 ${i} 页</span>`);
+    thumb.onclick = () => {
+      document.querySelectorAll('.pdf-thumb').forEach(t => t.classList.remove('active'));
+      thumb.classList.add('active');
+      showPreview(canvas.toDataURL('image/png'));
+    };
+    thumbs.appendChild(thumb);
+    if (i === 1) showPreview(canvas.toDataURL('image/png'));
+  }
+  showProgress(false);
+  setStatus(`PDF 已渲染，共 ${pdf.numPages} 页。请选择页面后点击开始识别。`, true, 'success');
+}
+
+function showPreview(dataUrl) {
+  currentImageDataUrl = dataUrl;
+  const area = document.getElementById('previewArea');
+  area.classList.add('show');
+  document.getElementById('previewImg').src = dataUrl;
+  document.getElementById('recognizeActions').style.display = 'block';
+  setStatus('图片已载入，点击"开始识别"。');
+}
+
+function clearUpload() {
+  currentImageDataUrl = '';
+  recognizedWords = [];
+  document.getElementById('previewArea').classList.remove('show');
+  document.getElementById('pdfThumbs').innerHTML = '';
+  document.getElementById('recognizeActions').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  setStatus('');
+  showProgress(false);
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeLocal').classList.toggle('active', mode === 'local');
+  document.getElementById('modeAI').classList.toggle('active', mode === 'ai');
+}
+
+// ========== Recognition ==========
+async function startRecognition() {
+  if (currentMode === 'ai') {
+    await extractHighlightedWordsAI();
+  } else {
+    await extractHighlightedWords();
+  }
+}
+
+// AI Recognition
+async function extractHighlightedWordsAI() {
+  if (!currentImageDataUrl) { showToast('请先上传图片', 'error'); return; }
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const endpoint = document.getElementById('apiEndpoint').value.trim();
+  const model = document.getElementById('apiModel').value.trim();
+  if (!apiKey || !endpoint || !model) {
+    showToast('请先配置 API Key（点击右上角设置）', 'error');
+    openSettings();
+    return;
+  }
+  showProgress(true, '正在调用 AI 视觉模型...');
+  const prompt = `你是英语学习助手，从截图中提取荧光笔高亮的英文单词/短语。
+要求：
+1. 找出所有被荧光笔（黄/绿/蓝/粉）划出或高亮背景的英文单词或短语
+2. 提取单词/短语，给出简明中文释义（不超过15字）
+3. 短语作为整体提取，忽略标点
+4. 同一个单词只输出一次
+5. 只返回 JSON 数组，不要解释
+
+格式：
+[{"word":"...","meaning_zh":"..."}]`;
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model, temperature: 0, max_tokens: 4096,
+        messages: [
+          { role: 'system', content: '你只输出严格 JSON，不输出任何解释文字。' },
+          { role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: currentImageDataUrl } }] }
+        ]
+      })
+    });
+    if (!response.ok) throw new Error(`API 错误: ${response.status}`);
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    const items = parseModelJson(content);
+    recognizedWords = normalizeModelWords(items);
+    showResults();
+    showProgress(false);
+    setStatus(`AI 识别完成：共 ${recognizedWords.length} 个单词`, true, 'success');
+  } catch (err) {
+    showProgress(false);
+    setStatus(`AI 识别失败: ${err.message}`, true, 'error');
+  }
+}
+
+// Local OCR
+async function extractHighlightedWords() {
+  if (!currentImageDataUrl) { showToast('请先上传图片', 'error'); return; }
+  showProgress(true, '正在分析荧光笔区域...');
+  const image = await loadImage(currentImageDataUrl);
+  const canvas = createWorkingCanvas(image);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const regions = detectHighlightRegions(imageData, canvas.width, canvas.height);
+  if (!regions.length) {
+    showProgress(false);
+    setStatus('未检测到荧光笔高亮区域，请尝试更清晰的截图', true, 'error');
+    return;
+  }
+  showProgress(true, `检测到 ${regions.length} 个高亮区域，正在 OCR...`);
+  const worker = await Tesseract.createWorker('eng', 1, {
+    logger: info => {
+      if (info.status === 'recognizing text') {
+        updateProgress(Math.round(info.progress * 100));
+      }
+    }
+  });
+  await worker.setParameters({
+    tessedit_pageseg_mode: '6',
+    preserve_interword_spaces: '1',
+    tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-' "
+  });
+  const ocrCanvas = createOcrCanvas(canvas);
+  const fullResult = await worker.recognize(ocrCanvas.toDataURL('image/png'));
+  let phrases = buildHighlightedPhrases(fullResult.data.words || [], imageData, canvas.width, canvas.height);
+  if (!phrases.length) {
+    phrases = await fallbackCropOcr(worker, regions, canvas);
+  }
+  await worker.terminate();
+  const sentences = splitSentences(fullResult.data.text);
+  let finalWords = phrases.map(phrase => ({
+    word: phrase,
+    meaning_zh: getMeaning(phrase),
+    sentence: findSentence(phrase, sentences)
+  }));
+  try { finalWords = await completeMeaningsByAI(finalWords); }
+  catch (e) { console.warn('释义补全失败', e); }
+  recognizedWords = finalWords;
+  showResults();
+  showProgress(false);
+  setStatus(`本地 OCR 完成：共 ${finalWords.length} 个单词`, true, 'success');
+}
+
+// ========== Highlight Detection ==========
+function rgbToHue(r, g, b) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max === min) return 0;
+  let hue = 0;
+  if (max === r) hue = (g - b) / (max - min);
+  else if (max === g) hue = 2 + (b - r) / (max - min);
+  else hue = 4 + (r - g) / (max - min);
+  hue *= 60;
+  return hue < 0 ? hue + 360 : hue;
+}
+
+function isHighlightPixel(r, g, b) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const saturation = max === 0 ? 0 : (max - min) / max;
+  const lightness = (max + min) / 510;
+  if (saturation < 0.22 || lightness < 0.48 || lightness > 0.97) return false;
+  if (r > 245 && g > 245 && b > 245) return false;
+  if (r < 35 && g < 35 && b < 35) return false;
+  const hue = rgbToHue(r, g, b);
+  return (hue >= 35 && hue <= 78) || (hue >= 78 && hue <= 165) || (hue >= 165 && hue <= 260) || (hue >= 285 && hue <= 350);
+}
+
+function detectHighlightRegions(imageData, width, height) {
+  const data = imageData.data;
+  const visited = new Uint8Array(width * height);
+  const regions = [];
+  const index = (x, y) => y * width + x;
+  const step = 2;
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const start = index(x, y);
+      if (visited[start]) continue;
+      const di = start * 4;
+      if (!isHighlightPixel(data[di], data[di + 1], data[di + 2])) continue;
+      const stack = [[x, y]];
+      visited[start] = 1;
+      let minX = x, maxX = x, minY = y, maxY = y, count = 0;
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        count++;
+        const neighbors = [[cx - step, cy], [cx + step, cy], [cx, cy - step], [cx, cy + step]];
+        for (const [nx, ny] of neighbors) {
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          const ni = index(nx, ny);
+          if (visited[ni]) continue;
+          const pi = ni * 4;
+          if (isHighlightPixel(data[pi], data[pi + 1], data[pi + 2])) {
+            visited[ni] = 1;
+            stack.push([nx, ny]);
+            minX = Math.min(minX, nx); maxX = Math.max(maxX, nx);
+            minY = Math.min(minY, ny); maxY = Math.max(maxY, ny);
+          }
+        }
+      }
+      const w = maxX - minX + step, h = maxY - minY + step;
+      if (count > 20 && w > 18 && h > 8) {
+        const padX = Math.max(16, Math.round(w * 0.18));
+        const padY = Math.max(10, Math.round(h * 0.75));
+        regions.push({
+          x: Math.max(0, minX - padX), y: Math.max(0, minY - padY),
+          w: Math.min(width, maxX + padX) - Math.max(0, minX - padX),
+          h: Math.min(height, maxY + padY) - Math.max(0, minY - padY)
+        });
+      }
+    }
+  }
+  return mergeRegions(regions).slice(0, 30);
+}
+
+function overlap(a, b) {
+  return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+}
+
+function mergeRegions(regions) {
+  const merged = [];
+  for (const region of regions.sort((a, b) => a.y - b.y || a.x - b.x)) {
+    const target = merged.find(item => overlap(
+      { x: item.x - 16, y: item.y - 10, w: item.w + 32, h: item.h + 20 }, region
+    ));
+    if (target) {
+      const x1 = Math.min(target.x, region.x), y1 = Math.min(target.y, region.y);
+      const x2 = Math.max(target.x + target.w, region.x + region.w);
+      const y2 = Math.max(target.y + target.h, region.y + region.h);
+      target.x = x1; target.y = y1; target.w = x2 - x1; target.h = y2 - y1;
+    } else {
+      merged.push({ ...region });
+    }
+  }
+  return merged.filter(r => r.w < 900 && r.h < 180);
+}
+
+// ========== OCR Helpers ==========
+function createWorkingCanvas(image) {
+  const minWidth = 1500, maxWidth = 2400;
+  let scale = 1;
+  if (image.width < minWidth) scale = Math.min(2.4, minWidth / image.width);
+  if (image.width > maxWidth) scale = maxWidth / image.width;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+function createOcrCanvas(sourceCanvas) {
+  const canvas = document.createElement('canvas');
+  canvas.width = sourceCanvas.width;
+  canvas.height = sourceCanvas.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(sourceCanvas, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+    gray = (gray - 128) * 1.45 + 128;
+    if (gray < 115) gray = Math.max(0, gray - 35);
+    if (gray > 170) gray = Math.min(255, gray + 28);
+    data[i] = data[i + 1] = data[i + 2] = gray;
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+function getWordBox(word) {
+  const box = word && (word.bbox || word.baseline);
+  if (!box || typeof box.x0 !== 'number') return null;
+  return { x: box.x0, y: box.y0, w: Math.max(1, box.x1 - box.x0), h: Math.max(1, box.y1 - box.y0) };
+}
+
+function expandedBox(box, width, height) {
+  const padX = Math.max(8, Math.round(box.w * 0.22));
+  const padY = Math.max(8, Math.round(box.h * 0.85));
+  return {
+    x: Math.max(0, Math.round(box.x - padX)),
+    y: Math.max(0, Math.round(box.y - padY)),
+    w: Math.min(width, Math.round(box.x + box.w + padX)) - Math.max(0, Math.round(box.x - padX)),
+    h: Math.min(height, Math.round(box.y + box.h + padY)) - Math.max(0, Math.round(box.y - padY))
+  };
+}
+
+function highlightRatioInBox(imageData, width, height, box) {
+  const data = imageData.data;
+  const sampleStep = 2;
+  let total = 0, hits = 0;
+  const xEnd = Math.min(width, box.x + box.w);
+  const yEnd = Math.min(height, box.y + box.h);
+  for (let y = box.y; y < yEnd; y += sampleStep) {
+    for (let x = box.x; x < xEnd; x += sampleStep) {
+      const i = (y * width + x) * 4;
+      total++;
+      if (isHighlightPixel(data[i], data[i + 1], data[i + 2])) hits++;
+    }
+  }
+  return total ? hits / total : 0;
+}
+
+function normalizeOcrWord(text) {
+  return cleanWordText(text).split(/\s+/).filter(Boolean).join(' ');
+}
+
+function buildHighlightedPhrases(ocrWords, imageData, width, height) {
+  const candidates = [];
+  for (const item of ocrWords || []) {
+    const text = normalizeOcrWord(item.text);
+    if (!text || !/^[A-Za-z][A-Za-z'-]*$/.test(text)) continue;
+    if (text.length < 2) continue;
+    if (typeof item.confidence === 'number' && item.confidence < 35) continue;
+    const box = getWordBox(item);
+    if (!box) continue;
+    const checkBox = expandedBox(box, width, height);
+    const ratio = highlightRatioInBox(imageData, width, height, checkBox);
+    if (ratio >= 0.025) {
+      candidates.push({ text, box, ratio, centerY: box.y + box.h / 2, lineHeight: box.h });
+    }
+  }
+  candidates.sort((a, b) => a.centerY - b.centerY || a.box.x - b.box.x);
+  const groups = [];
+  for (const item of candidates) {
+    const last = groups[groups.length - 1];
+    if (!last) { groups.push([item]); continue; }
+    const prev = last[last.length - 1];
+    const sameLine = Math.abs(item.centerY - prev.centerY) <= Math.max(18, prev.lineHeight * 0.75, item.lineHeight * 0.75);
+    const gap = item.box.x - (prev.box.x + prev.box.w);
+    if (sameLine && gap >= -4 && gap <= Math.max(42, prev.lineHeight * 1.8)) {
+      last.push(item);
+    } else {
+      groups.push([item]);
+    }
+  }
+  const seen = new Set();
+  return groups.map(group => {
+    const phrase = group.map(item => item.text).join(' ').trim();
+    const key = phrase.toLowerCase();
+    if (!phrase || seen.has(key)) return null;
+    seen.add(key);
+    return phrase;
+  }).filter(Boolean);
+}
+
+async function fallbackCropOcr(worker, regions, sourceCanvas) {
+  const words = [];
+  const seen = new Set();
+  for (const region of regions) {
+    const crop = document.createElement('canvas');
+    const scale = 2;
+    crop.width = region.w * scale;
+    crop.height = region.h * scale;
+    const ctx = crop.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(sourceCanvas, region.x, region.y, region.w, region.h, 0, 0, crop.width, crop.height);
+    const processedCrop = createOcrCanvas(crop);
+    const result = await worker.recognize(processedCrop.toDataURL('image/png'));
+    const cleaned = normalizeOcrWord(result.data.text);
+    if (!cleaned) continue;
+    const phrase = cleaned.split(/\s+/).filter(token => token.length > 1 && /^[A-Za-z][A-Za-z'-]*$/.test(token)).join(' ');
+    const key = phrase.toLowerCase();
+    if (phrase && !seen.has(key)) { seen.add(key); words.push(phrase); }
+  }
+  return words;
+}
+
+// ========== Text Helpers ==========
+function cleanWordText(text) {
+  return String(text || '').replace(/[""''"()\[\]{}.,;:!?]/g, ' ').replace(/[^A-Za-z\s'-]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function splitSentences(text) {
+  return String(text || '').replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+}
+
+function findSentence(word, sentences) {
+  const target = word.toLowerCase();
+  return sentences.find(sentence => sentence.toLowerCase().includes(target)) || word;
+}
+
+function escapeHtml(text) {
+  return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function escapeRegExp(text) {
+  return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// ========== Meaning Helpers ==========
+function getMeaning(word) {
+  const key = word.toLowerCase();
+  if (fallbackMeanings[key]) return fallbackMeanings[key];
+  if (key.endsWith('s') && fallbackMeanings[key.slice(0, -1)]) return fallbackMeanings[key.slice(0, -1)];
+  const parts = key.split(/\s+/);
+  if (parts.length > 1) {
+    const translated = parts.map(part => fallbackMeanings[part] || fallbackMeanings[part.replace(/s$/, '')]).filter(Boolean);
+    if (translated.length === parts.length) return translated.join('；');
+  }
+  return fallbackMeanings[key] || '待补充';
+}
+
+async function translateWordFree(word) {
+  const text = String(word || '').trim();
+  if (!text || text === '待补充') return '';
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-CN`;
+    const response = await fetch(url);
+    if (!response.ok) return '';
+    const data = await response.json();
+    const translated = data?.responseData?.translatedText || '';
+    if (!translated || translated.toLowerCase() === text.toLowerCase()) return '';
+    return translated.replace(/[。.!?？]+$/g, '').slice(0, 15);
+  } catch (e) { return ''; }
+}
+
+async function completeMeaningsByFreeApi(words) {
+  const output = [];
+  for (const item of words) {
+    if (item.meaning_zh && item.meaning_zh !== '待补充') { output.push(item); continue; }
+    let meaning = getMeaning(item.word);
+    if (meaning === '待补充') {
+      try { meaning = await translateWordFree(item.word) || '待补充'; }
+      catch (e) { meaning = '待补充'; }
+    }
+    output.push({ ...item, meaning_zh: meaning });
+  }
+  return output;
+}
+
+async function completeMeaningsByAI(words) {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const endpoint = document.getElementById('apiEndpoint').value.trim();
+  const model = document.getElementById('apiModel').value.trim();
+  if (!words.length) return words;
+  if (!apiKey || !endpoint || !model) return completeMeaningsByFreeApi(words);
+  const needItems = words.filter(item => !item.meaning_zh || item.meaning_zh === '待补充');
+  if (!needItems.length) return words;
+  const payload = needItems.map(item => ({ word: item.word, sentence: item.sentence || item.word }));
+  const prompt = `请根据英文单词及其语境，给出简明中文释义。要求：
+1. 只返回 JSON 数组
+2. 每项包含 word 和 meaning_zh
+3. meaning_zh 不超过15个中文字
+4. 不要解释，不要 Markdown
+
+待释义数据：
+${JSON.stringify(payload, null, 2)}
+
+返回格式：
+[{"word":"example","meaning_zh":"例子"}]`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages: [{ role: 'system', content: '你是英语词汇释义助手，只输出严格 JSON。' }, { role: 'user', content: prompt }], temperature: 0, max_tokens: 2048 })
+  });
+  if (!response.ok) throw new Error(`释义补全失败：${response.status}`);
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  const meanings = parseModelJson(content);
+  const map = new Map(meanings.map(item => [String(item.word || '').toLowerCase(), String(item.meaning_zh || '').trim()]));
+  return words.map(item => ({ ...item, meaning_zh: map.get(item.word.toLowerCase()) || item.meaning_zh || getMeaning(item.word) }));
+}
+
+async function completeMeanings() {
+  if (!recognizedWords.length) { showToast('暂无可补全的识别结果', 'error'); return; }
+  showProgress(true, '正在补全释义...');
+  try {
+    recognizedWords = await completeMeaningsByAI(recognizedWords);
+    showResults();
+    showProgress(false);
+    showToast('释义补全完成');
+  } catch (err) {
+    showProgress(false);
+    showToast(`释义补全失败: ${err.message}`, 'error');
+  }
+}
+
+function parseModelJson(content) {
+  const raw = String(content || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('模型没有返回合法 JSON 数组');
+    return JSON.parse(match[0]);
+  }
+}
+
+function normalizeModelWords(items) {
+  const seen = new Set();
+  return items.map(item => ({
+    word: cleanWordText(item.word || item.text || ''),
+    sentence: String(item.sentence || item.context || '').trim(),
+    meaning_zh: String(item.meaning_zh || item.meaning || item.zh || '').trim()
+  })).filter(item => {
+    if (!item.word || !/^[A-Za-z][A-Za-z\s'-]*$/.test(item.word)) return false;
+    const key = item.word.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    if (!item.sentence) item.sentence = item.word;
+    if (!item.meaning_zh) item.meaning_zh = getMeaning(item.word);
+    return true;
+  });
+}
+
+// ========== Results ==========
+function showResults() {
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('resultSummary').textContent = `共识别出 ${recognizedWords.length} 个单词`;
+  const grid = document.getElementById('resultsGrid');
+  if (!recognizedWords.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><h4>暂无识别结果</h4><p>请确认图片中有明显的荧光笔高亮区域</p></div>';
+    return;
+  }
+  grid.innerHTML = recognizedWords.map((item, index) => `
+    <div class="word-card">
+      <div class="word">${escapeHtml(item.word)}</div>
+      <div class="meaning">翻译：${escapeHtml(item.meaning_zh || '待补充')}</div>
+      <div class="word-tags">
+        <span class="tag tag-primary">识别</span>
+        <span class="tag tag-muted">${item.word.split(/\s+/).length > 1 ? '短语' : '单词'}</span>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="speakWord('${escapeHtml(item.word).replace(/'/g, '\\&#39;')}')">🔊 发音</button>
+        <button class="btn btn-primary btn-sm" onclick="addOneToBook(${index})">+ 单词本</button>
+        <button class="btn btn-secondary btn-sm" onclick="removeResult(${index})">删除</button>
+      </div>
+    </div>
+  `).join('');
+  setTimeout(() => {
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function removeResult(index) {
+  recognizedWords.splice(index, 1);
+  showResults();
+}
+
+function addOneToBook(index) {
+  const item = recognizedWords[index];
+  if (!item) return;
+  if (addWordToBook(item)) {
+    showToast(`已加入单词本：${item.word}`);
+    updateStats();
+  }
+}
+
+function addAllToBook() {
+  if (!recognizedWords.length) { showToast('暂无可加入的识别结果', 'error'); return; }
+  let added = 0;
+  for (const item of recognizedWords) {
+    const book = getWordbook();
+    const exists = book.some(w => w.word.toLowerCase() === item.word.toLowerCase());
+    if (!exists && addWordToBook(item)) added++;
+  }
+  showToast(`已加入 ${added} 个新单词`);
+  updateStats();
+  renderWordbook();
+}
+
+async function copyResults() {
+  if (!recognizedWords.length) { showToast('暂无可复制的结果', 'error'); return; }
+  const text = recognizedWords.map(item => `${item.word}\t${item.meaning_zh}`).join('\n');
+  await navigator.clipboard.writeText(text);
+  showToast('已复制识别结果');
+}
+
+// ========== Wordbook ==========
+function getWordbook() {
+  try { return JSON.parse(localStorage.getItem('hv_wordbook') || '[]'); }
+  catch (e) { return []; }
+}
+
+function saveWordbook(words) {
+  localStorage.setItem('hv_wordbook', JSON.stringify(words));
+}
+
+function addWordToBook(wordItem) {
+  const book = getWordbook();
+  const key = wordItem.word.toLowerCase();
+  if (book.some(item => item.word.toLowerCase() === key)) return false;
+  book.unshift({
+    word: wordItem.word,
+    meaning_zh: wordItem.meaning_zh || getMeaning(wordItem.word),
+    sentence: wordItem.sentence || wordItem.word,
+    addedAt: Date.now(),
+    status: 'new',
+    repetitions: 0,
+    interval: 0,
+    ease: 2.5,
+    nextReview: Date.now()
+  });
+  saveWordbook(book);
+  renderWordbook();
+  return true;
+}
+
+function removeWordFromBook(word) {
+  const book = getWordbook().filter(item => item.word !== word);
+  saveWordbook(book);
+  renderWordbook();
+  updateStats();
+}
+
+function renderWordbook() {
+  const grid = document.getElementById('wordbookGrid');
+  const query = (document.getElementById('wbSearch')?.value || '').trim().toLowerCase();
+  const filter = document.getElementById('wbFilter')?.value || 'all';
+  let book = getWordbook();
+  if (filter !== 'all') {
+    book = book.filter(item => {
+      if (filter === 'review') return (item.nextReview || 0) <= Date.now();
+      return (item.status || 'new') === filter;
+    });
+  }
+  if (query) {
+    book = book.filter(item =>
+      item.word.toLowerCase().includes(query) ||
+      String(item.meaning_zh || '').toLowerCase().includes(query)
+    );
+  }
+  if (!book.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">📚</div><h4>单词本为空</h4><p>识别单词后可以加入单词本进行复习</p></div>';
+    return;
+  }
+  grid.innerHTML = book.map(item => {
+    const statusTag = item.status === 'mastered' ? '<span class="tag tag-success">已掌握</span>' :
+      item.status === 'hard' ? '<span class="tag tag-warning">困难词</span>' :
+      (item.nextReview || 0) <= Date.now() ? '<span class="tag tag-primary">待复习</span>' :
+      '<span class="tag tag-muted">新词</span>';
+    return `
+    <div class="word-card">
+      <div class="word">${escapeHtml(item.word)}</div>
+      <div class="meaning">翻译：${escapeHtml(item.meaning_zh || '待补充')}</div>
+      <div class="word-tags">${statusTag}</div>
+      <div class="card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="speakWord('${escapeHtml(item.word).replace(/'/g, '\\&#39;')}')">🔊</button>
+        <button class="btn btn-secondary btn-sm" onclick="editWordBook('${escapeHtml(item.word).replace(/'/g, '\\&#39;')}')">编辑</button>
+        <button class="btn btn-danger btn-sm" style="color:#fff" onclick="removeWordFromBook('${escapeHtml(item.word).replace(/'/g, '\\&#39;')}')">删除</button>
+      </div>
+    </div>
+  `}).join('');
+}
+
+function editWordBook(word) {
+  const book = getWordbook();
+  const item = book.find(w => w.word === word);
+  if (!item) return;
+  const newWord = prompt('编辑单词:', item.word);
+  if (newWord === null) return;
+  const newMeaning = prompt('编辑释义:', item.meaning_zh);
+  if (newMeaning === null) return;
+  item.word = newWord.trim() || item.word;
+  item.meaning_zh = newMeaning.trim() || item.meaning_zh;
+  saveWordbook(book);
+  renderWordbook();
+  showToast('已保存修改');
+}
+
+function exportWordbook(type) {
+  const book = getWordbook();
+  if (!book.length) { showToast('单词本为空', 'error'); return; }
+  if (type === 'csv') {
+    const csv = '\uFEFFword,meaning_zh,status,nextReview\n' + book.map(item =>
+      [item.word, item.meaning_zh, item.status, new Date(item.nextReview || Date.now()).toLocaleString()]
+        .map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    downloadText(csv, 'highlight-vocab.csv', 'text/csv;charset=utf-8');
+  } else {
+    downloadText(JSON.stringify(book, null, 2), 'highlight-vocab.json', 'application/json');
+  }
+  showToast(`已导出 ${type.toUpperCase()}`);
+}
+
+function downloadText(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+// ========== Stats ==========
+function updateStats() {
+  const book = getWordbook();
+  const due = book.filter(item => (item.nextReview || 0) <= Date.now()).length;
+  const mastered = book.filter(item => item.status === 'mastered').length;
+  const total = book.length;
+  const mastery = total ? Math.round((mastered / total) * 100) : 0;
+  const weekStart = Date.now() - 7 * 86400000;
+  const weekNew = book.filter(item => (item.addedAt || 0) >= weekStart).length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDue').textContent = due;
+  document.getElementById('statMastered').textContent = mastery + '%';
+  document.getElementById('statMasteredDetail').textContent = `${mastered} / ${total}`;
+  document.getElementById('statWeek').textContent = `本周 +${weekNew}`;
+  const streak = Number(localStorage.getItem('hv_streak') || '0');
+  document.getElementById('statStreak').textContent = streak;
+}
+
+// ========== Review ==========
+function openReview() {
+  const book = getWordbook();
+  if (!book.length) { showToast('单词本为空，先去识别添加单词吧', 'error'); return; }
+  document.getElementById('reviewModal').classList.add('show');
+  startReview();
+}
+
+function closeReview() {
+  document.getElementById('reviewModal').classList.remove('show');
+  showingMeaning = false;
+}
+
+function getDueWords() {
+  return getWordbook().filter(item => (item.nextReview || 0) <= Date.now());
+}
+
+function startReview() {
+  reviewQueue = getDueWords();
+  if (!reviewQueue.length) reviewQueue = getWordbook();
+  reviewIndex = 0;
+  reviewKnown = 0;
+  reviewUnknown = 0;
+  showingMeaning = false;
+  renderReviewCard();
+}
+
+function renderReviewCard() {
+  const wordEl = document.getElementById('reviewWord');
+  const meaningEl = document.getElementById('reviewMeaning');
+  const actions = document.getElementById('reviewActions');
+  const nextBtn = document.getElementById('reviewNextBtn');
+  const hint = document.querySelector('.review-hint');
+  if (!reviewQueue.length) {
+    wordEl.textContent = '暂无单词';
+    meaningEl.innerHTML = '请先添加单词到单词本';
+    meaningEl.classList.add('show');
+    actions.style.display = 'none';
+    nextBtn.style.display = 'none';
+    hint.style.display = 'none';
+    updateReviewProgress();
+    return;
+  }
+  if (reviewIndex >= reviewQueue.length) {
+    wordEl.textContent = '复习完成';
+    meaningEl.innerHTML = `认识 ${reviewKnown} 个，不认识 ${reviewUnknown} 个`;
+    meaningEl.classList.add('show');
+    actions.style.display = 'none';
+    nextBtn.style.display = 'none';
+    hint.style.display = 'none';
+    updateReviewProgress();
+    return;
+  }
+  const item = reviewQueue[reviewIndex];
+  wordEl.textContent = item.word;
+  meaningEl.innerHTML = `翻译：${escapeHtml(item.meaning_zh || '待补充')}`;
+  meaningEl.classList.toggle('show', showingMeaning);
+  actions.style.display = showingMeaning ? 'grid' : 'none';
+  nextBtn.style.display = 'none';
+  hint.style.display = showingMeaning ? 'none' : 'block';
+  updateReviewProgress();
+}
+
+function toggleReviewMeaning() {
+  if (!reviewQueue.length || reviewIndex >= reviewQueue.length) return;
+  showingMeaning = !showingMeaning;
+  renderReviewCard();
+}
+
+function nextReviewCard() {
+  showingMeaning = false;
+  renderReviewCard();
+}
+
+function reviewAnswer(known) {
+  if (!reviewQueue.length || reviewIndex >= reviewQueue.length) return;
+  const current = reviewQueue[reviewIndex];
+  const book = getWordbook();
+  const idx = book.findIndex(item => item.word === current.word);
+  if (idx >= 0) {
+    const item = book[idx];
+    if (known) {
+      reviewKnown++;
+      item.repetitions = (item.repetitions || 0) + 1;
+      item.interval = item.repetitions === 1 ? 1 : item.repetitions === 2 ? 3 : Math.round((item.interval || 3) * (item.ease || 2.5));
+      item.status = item.repetitions >= 3 ? 'mastered' : 'review';
+    } else {
+      reviewUnknown++;
+      item.repetitions = 0;
+      item.interval = 1;
+      item.status = 'hard';
+    }
+    item.nextReview = Date.now() + item.interval * 86400000;
+    book[idx] = item;
+    saveWordbook(book);
+  }
+  reviewIndex++;
+  showingMeaning = false;
+  renderReviewCard();
+  updateStats();
+}
+
+function updateReviewProgress() {
+  const total = reviewQueue.length;
+  const current = Math.min(reviewIndex + 1, total);
+  const pct = total ? Math.round((reviewIndex / total) * 100) : 0;
+  document.getElementById('reviewFill').style.width = pct + '%';
+  document.getElementById('reviewProgressText').textContent = total ? `${current} / ${total}` : '0 / 0';
+  document.getElementById('reviewStats').textContent = `认识 ${reviewKnown} | 不认识 ${reviewUnknown}`;
+}
+
+// ========== Settings ==========
+function openSettings() {
+  document.getElementById('settingsModal').classList.add('show');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+function loadSettings() {
+  document.getElementById('apiKey').value = localStorage.getItem('hv_api_key') || '';
+  document.getElementById('apiEndpoint').value = localStorage.getItem('hv_api_endpoint') || 'https://api.deepseek.com/chat/completions';
+  document.getElementById('apiModel').value = localStorage.getItem('hv_api_model') || 'deepseek-chat';
+  document.getElementById('voiceRate').value = voiceRate;
+  document.getElementById('voiceLabel').textContent = `当前语速: ${voiceRate}`;
+  const mode = localStorage.getItem('hv_default_mode') || 'local';
+  document.getElementById('defaultMode').value = mode;
+  setMode(mode);
+}
+
+function saveSettings() {
+  localStorage.setItem('hv_api_key', document.getElementById('apiKey').value.trim());
+  localStorage.setItem('hv_api_endpoint', document.getElementById('apiEndpoint').value.trim());
+  localStorage.setItem('hv_api_model', document.getElementById('apiModel').value.trim());
+  localStorage.setItem('hv_voice_rate', document.getElementById('voiceRate').value);
+  localStorage.setItem('hv_default_mode', document.getElementById('defaultMode').value);
+  voiceRate = Number(document.getElementById('voiceRate').value);
+  showToast('设置已保存');
+  closeSettings();
+}
+
+function updateVoiceLabel() {
+  document.getElementById('voiceLabel').textContent = `当前语速: ${document.getElementById('voiceRate').value}`;
+}
+
+function clearAllData() {
+  if (!confirm('确定要清空所有单词本数据和设置吗？此操作不可恢复。')) return;
+  localStorage.removeItem('hv_wordbook');
+  localStorage.removeItem('hv_api_key');
+  localStorage.removeItem('hv_api_endpoint');
+  localStorage.removeItem('hv_api_model');
+  localStorage.removeItem('hv_voice_rate');
+  localStorage.removeItem('hv_default_mode');
+  localStorage.removeItem('hv_streak');
+  recognizedWords = [];
+  updateStats();
+  renderWordbook();
+  showToast('所有数据已清空');
+  closeSettings();
+}
+
+// ========== Utils ==========
+function speakWord(word) {
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.lang = 'en-US';
+  utterance.rate = voiceRate;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utterance);
+}
+
+function showProgress(show, text) {
+  const wrap = document.getElementById('progressWrap');
+  wrap.classList.toggle('show', show);
+  if (show) document.getElementById('progressText').textContent = text;
+}
+
+function updateProgress(percent) {
+  document.getElementById('progressFill').style.width = percent + '%';
+}
+
+function setStatus(message, show = true, type = '') {
+  const box = document.getElementById('statusBox');
+  box.textContent = message;
+  box.className = 'status-box' + (show ? ' show' : '') + (type ? ' ' + type : '');
+}
+
+function showToast(message, type = '') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (type ? ' ' + type : '');
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(20px)';
+    toast.style.transition = 'all .3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Close modals on overlay click
+document.getElementById('reviewModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeReview();
+});
+document.getElementById('settingsModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+</script>
+</body>
+</html>
