@@ -39,6 +39,154 @@
               <div>
                 <p class="section-label">卷面扫描</p>
                 <h2>今日阅读复盘</h2>
+                <p class="muted-copy">上传阅读卷面，整理黄笔标出的生词。</p>
+              </div>
+              <span class="status" id="scan-status">待上传</span>
+            </div>
+
+            <label class="dropzone">
+              <input id="paper-upload" accept="image/*" type="file" />
+              <img id="paper-image" alt="上传的阅读卷面" hidden />
+              <div class="paper-preview" id="paper-preview" aria-hidden="true">
+                <div class="paper-title"></div>
+                <div class="paper-line wide"></div>
+                <div class="paper-line"></div>
+                <mark class="highlight one">concession</mark>
+                <div class="paper-line short"></div>
+                <div class="paper-line wide"></div>
+                <mark class="highlight two">skeptical</mark>
+                <div class="paper-line"></div>
+                <mark class="highlight three">insulate</mark>
+              </div>
+              <span class="drop-copy" id="upload-copy">点击上传试卷照片</span>
+            </label>
+
+            <div class="scan-summary" aria-label="识别摘要">
+              <span><strong>21</strong>高光区域</span>
+              <span><strong>4</strong>篇阅读</span>
+              <span><strong>92%</strong>置信度</span>
+            </div>
+          </div>
+
+          <div class="word-card dock-card">
+            <div class="section-heading">
+              <p class="section-label">提取结果</p>
+              <strong><span id="selected-count-side">3</span> 个待复习词</strong>
+            </div>
+            <div class="filter-pills" aria-label="词库筛选">
+              <span class="active">全部</span>
+              <span>熟词生义</span>
+              <span>态度词</span>
+            </div>
+            <div class="word-list" id="word-list"></div>
+            <div class="add-word">
+              <input id="new-word" aria-label="补录单词" placeholder="漏识别的词" />
+              <button id="add-word-button" type="button">补录</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="study-grid">
+          <div class="review-card">
+            <div class="section-heading">
+              <p class="section-label">电子复习</p>
+              <strong><span id="review-position">1</span>/<span id="review-total">3</span></strong>
+            </div>
+            <button class="flashcard" id="flashcard" type="button">
+              <span class="flashcard-inner">
+                <span class="flashcard-face flashcard-front">
+                  <span id="card-source">阅读二 第三段</span>
+                  <strong id="card-word">concession</strong>
+                  <small id="card-hint">点击翻转查看释义</small>
+                </span>
+                <span class="flashcard-face flashcard-back">
+                  <span id="card-tag">熟词生义</span>
+                  <strong id="card-meaning">让步；妥协</strong>
+                  <small id="card-example">例句：The author makes a careful concession before giving the final judgment.</small>
+                </span>
+              </span>
+            </button>
+            <div class="review-actions">
+              <button id="prev-card" type="button">上一张</button>
+              <button id="next-card" type="button">下一张</button>
+              <button id="show-meaning" type="button">显示释义</button>
+            </div>
+          </div>
+
+          <div class="insight-panel">
+            <div class="section-heading">
+              <p class="section-label">本次复盘</p>
+              <strong>72%</strong>
+            </div>
+            <div class="metric-row">
+              <span>高频错因</span>
+              <strong>熟词生义</strong>
+            </div>
+            <div class="metric-row">
+              <span>建议节奏</span>
+              <strong>每天 18 词</strong>
+            </div>
+            <div class="metric-row">
+              <span>复习方式</span>
+              <strong>卷面来源 + 卡片记忆</strong>
+            </div>
+            <div class="progress-track"><span id="progress-bar"></span></div>
+          </div>
+        </section>
+
+        <section class="bottom-stats" aria-label="复习统计">
+          <div>
+            <span>已掌握</span>
+            <strong><span id="mastered-count">1</span>/<span id="all-count">4</span> 个单词</strong>
+          </div>
+          <div class="bottom-progress"><span id="mastered-progress"></span></div>
+        </section>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>研词荧光 - 考研英语高光生词复习</title>
+    <meta
+      name="description"
+      content="拍下考研英语阅读卷面，整理高光生词，并用电子卡片复习。"
+    />
+    <meta property="og:title" content="研词荧光 - 考研英语高光生词复习" />
+    <meta
+      property="og:description"
+      content="拍下考研英语阅读卷面，整理高光生词，并用电子卡片复习。"
+    />
+    <meta property="og:image" content="./og.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div class="brand-lockup">
+            <span class="brand-mark">研</span>
+            <div>
+              <p class="eyebrow">考研英语阅读复盘</p>
+              <h1>研词荧光</h1>
+            </div>
+          </div>
+          <div class="top-actions" aria-label="复习概览">
+            <span>2026 阅读词库</span>
+            <strong><span id="selected-count-top">3</span> 个待复习</strong>
+          </div>
+        </header>
+
+        <section class="scanner-panel" aria-label="高光单词提取工作台">
+          <div class="upload-card hero-card">
+            <div class="upload-head">
+              <div>
+                <p class="section-label">卷面扫描</p>
+                <h2>今日阅读复盘</h2>
                 <p class="muted-copy">第二套试卷 · 阅读一至四 · 黄笔标记</p>
               </div>
               <span class="status" id="scan-status">待上传</span>
