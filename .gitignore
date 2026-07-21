@@ -42,3 +42,5 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/site-version*.tar.gz
+/.sites-package-stage*/
