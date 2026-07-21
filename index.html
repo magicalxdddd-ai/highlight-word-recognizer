@@ -47,6 +47,7 @@
             <label class="dropzone">
               <input id="paper-upload" accept="image/*" type="file" />
               <img id="paper-image" alt="上传的阅读卷面" hidden />
+              <span class="upload-icon" aria-hidden="true">☁️</span>
               <div class="paper-preview" id="paper-preview" aria-hidden="true">
                 <div class="paper-title"></div>
                 <div class="paper-line wide"></div>
@@ -58,7 +59,7 @@
                 <div class="paper-line"></div>
                 <mark class="highlight three">insulate</mark>
               </div>
-              <span class="drop-copy" id="upload-copy">上传试卷照片</span>
+              <span class="drop-copy" id="upload-copy">拖拽或点击上传试卷照片</span>
             </label>
 
             <div class="scan-summary" aria-label="识别摘要">
@@ -93,11 +94,21 @@
               <strong><span id="review-position">1</span>/<span id="review-total">3</span></strong>
             </div>
             <button class="flashcard" id="flashcard" type="button">
-              <span id="card-source">阅读二 第三段</span>
-              <strong id="card-word">concession</strong>
-              <small id="card-meaning">熟词生义 · 点一下看释义</small>
+              <span class="flashcard-inner">
+                <span class="flashcard-face flashcard-front">
+                  <span id="card-source">阅读二 第三段</span>
+                  <strong id="card-word">concession</strong>
+                  <small id="card-hint">点击翻转查看释义</small>
+                </span>
+                <span class="flashcard-face flashcard-back">
+                  <span id="card-tag">熟词生义</span>
+                  <strong id="card-meaning">让步；妥协</strong>
+                  <small id="card-example">例句：The author makes a careful concession before giving the final judgment.</small>
+                </span>
+              </span>
             </button>
             <div class="review-actions">
+              <button id="prev-card" type="button">上一张</button>
               <button id="next-card" type="button">下一张</button>
               <button id="show-meaning" type="button">显示释义</button>
             </div>
@@ -122,6 +133,14 @@
             </div>
             <div class="progress-track"><span id="progress-bar"></span></div>
           </div>
+        </section>
+
+        <section class="bottom-stats" aria-label="复习统计">
+          <div>
+            <span>已掌握</span>
+            <strong><span id="mastered-count">1</span>/<span id="all-count">4</span> 个单词</strong>
+          </div>
+          <div class="bottom-progress"><span id="mastered-progress"></span></div>
         </section>
       </section>
     </main>
