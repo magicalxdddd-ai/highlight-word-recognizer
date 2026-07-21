@@ -14,28 +14,28 @@ const initialWords: Word[] = [
   {
     text: "concession",
     meaning: "让步；妥协",
-    source: "Text 2 第3段",
+    source: "阅读二 第三段",
     tag: "熟词生义",
     selected: true,
   },
   {
     text: "insulate",
     meaning: "使隔绝；保护",
-    source: "Text 1 第5段",
+    source: "阅读一 第五段",
     tag: "核心动词",
     selected: true,
   },
   {
     text: "skeptical",
     meaning: "怀疑的",
-    source: "Text 4 第1段",
+    source: "阅读四 第一段",
     tag: "态度词",
     selected: true,
   },
   {
     text: "proliferation",
     meaning: "激增；扩散",
-    source: "Text 3 第2段",
+    source: "阅读三 第二段",
     tag: "长难词",
     selected: false,
   },
@@ -111,7 +111,7 @@ export default function Home() {
       <section className="workspace">
         <header className="topbar">
           <div className="brand-lockup">
-            <span className="brand-mark">Y</span>
+            <span className="brand-mark">研</span>
             <div>
               <p className="eyebrow">考研英语阅读复盘</p>
               <h1>研词荧光</h1>
@@ -129,7 +129,7 @@ export default function Home() {
               <div>
                 <p className="section-label">卷面扫描</p>
                 <h2>今日阅读复盘</h2>
-                <p className="muted-copy">Paper 02 · Text 1-4 · 黄笔标记</p>
+                <p className="muted-copy">第二套试卷 · 阅读一至四 · 黄笔标记</p>
               </div>
               <span className={`status ${scanState}`}>
                 {scanState === "idle"
